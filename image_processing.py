@@ -1,3 +1,4 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 import boto3 as boto3
@@ -14,15 +15,7 @@ def extract_and_save_images(image_list, merchant_name, pdf_path):
 
     for i in range(len(image_list)):
 
-        page_width = doc[i].rect.width
-
         for index, image in enumerate(image_list[i]['images']):
-            if round(image['bbox'][0], 2) < page_width / 2:
-                column = "Left"
-            else:
-                column = "Right"
-            print(column)
-
             image_pix = doc[i].get_pixmap(clip=image['bbox'])
             image_bytes = image_pix.tobytes()
             image_filename = f"page{i + 1}_img{index + 1}.png"
@@ -49,7 +42,6 @@ def extract_and_save_images(image_list, merchant_name, pdf_path):
                     "x1": round(image['bbox'][2], 2),
                     "y1": round(image['bbox'][3], 2)
                 },
-                "column": column
             })
 
     doc.close()
@@ -70,3 +62,121 @@ def uploading_image(image_filename, image_bytes):
 
     except Exception as e:
         print(f"Failed to upload {image_filename}: {e}")
+
+
+def image_position(page_no, x1, y1, image_results):
+    specific_image = get_image_at_position(image_results, page_no, x1, y1)
+    if specific_image:
+        print(f"Image found: {specific_image['filename']}")
+        return True
+    else:
+        print("No image found at the specified position.")
+        return False
+
+
+def get_image_at_position(image_info, target_page, target_x, target_y):
+    for img in image_info:
+        if img["page"] == target_page:
+            pos = img["position"]
+            if pos["x0"] <= target_x <= pos["x1"] and pos["y0"] <= target_y <= pos["y1"]:
+                return img
+    return None
+
+
+def round_tuple_values(t, decimal_places=2):
+    return tuple(round(v, decimal_places) for v in t)
+
+
+def extract_text_from_pdf(pdf_path):
+    document = fitz.open(pdf_path)
+    num_pages = document.page_count
+
+    all_pages_bboxlog = []
+    for page_num in range(num_pages):
+        page = document.load_page(page_num)
+        # Extract text with its font information
+        text_bbox = page.get_bboxlog()
+        result = []
+        current_group = []
+        has_image = False
+
+        # Process the data
+        for item in text_bbox:
+            type_, coordinates = item
+            if type_ == 'stroke-path':
+                if current_group:
+                    if current_group and any('IMAGE' in element for element in current_group):
+                        # Combine all 'text' entries into a single 'text' entry
+                        combined_text = " ".join([element['TEXT'] for element in current_group if 'TEXT' in element])
+                        # Replace the first text element with the combined text
+                        current_group = [{'TEXT': combined_text}] + [element for element in current_group if
+                                                                     'IMAGE' in element]
+                        result.append(current_group)
+                    current_group = []
+                has_image = False
+            else:
+                if type_ == 'fill-image':
+                    current_group.append({
+                        "IMAGE": round_tuple_values(coordinates)
+                    })
+                    has_image = True
+                elif has_image and type_ == 'fill-text':
+                    continue  # Skip this 'fill-text' if there was a 'fill-image' before it
+                else:
+                    current_group.append({
+                        "TEXT": page.get_textbox(coordinates)
+                    })
+
+        # Append the last group if exists
+
+        if current_group and any('IMAGE' in element for element in current_group):
+            combined_text = " ".join([element['TEXT'] for element in current_group if 'TEXT' in element])
+            current_group = [{'TEXT': combined_text}] + [element for element in current_group if 'IMAGE' in element]
+            result.append(current_group)
+
+        # Print result
+        print(json.dumps(result, indent=4))
+        all_pages_bboxlog.append(result)
+
+    return all_pages_bboxlog
+
+
+def bbox_to_image_dict(image_data):
+    image_dict = {}
+    for item in image_data:
+        pos = (round(item['position']['x0'], 2), round(item['position']['y0'], 2), round(item['position']['x1'], 2),
+               round(item['position']['y1'], 2))
+        image_dict[pos] = item['filename']
+    return image_dict
+
+
+def update_items_with_images(trained_result, image_dict):
+    print(image_dict)
+    """Update items' image field based on bbox and image_dict."""
+    for item in trained_result:
+        if 'IMAGE' not in item:
+            item['IMAGE'] = ''
+        elif item['IMAGE']:
+            bbox = item['IMAGE']
+            print(bbox)
+            images_closest = check_bbox(bbox, image_dict)
+            print(images_closest)
+            item['IMAGE'] = images_closest
+
+    return trained_result
+
+
+def check_bbox(bbox_to_check, image_dict):
+    for bbox, url in image_dict.items():
+        # Check if bbox_to_check exactly matches a bbox in image_dict
+        if bbox_to_check == bbox:
+            print("Exact match found")
+            return url
+        # Check if bbox_to_check is within the bbox in image_dict
+        if (bbox_to_check[0] >= bbox[0] and
+                bbox_to_check[1] >= bbox[1] and
+                bbox_to_check[2] <= bbox[2] and
+                bbox_to_check[3] <= bbox[3]):
+            print("Bounding box is within:")
+            return url
+    return []
