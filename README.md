@@ -85,7 +85,3 @@ CDV136573 - WHITE T BORN ALBUM PHOTO,M,45,CDV136573-M,https://item_image_url
 - Ensure all dependencies are installed and correctly configured.
 - Verify your S3 bucket permissions for uploading images.
 - Double-check the alignment and processing of text and images.
-
----
-
-This `README.md` provides clear instructions on how to run and test your program, along with an overview of the key steps involved in the process.
