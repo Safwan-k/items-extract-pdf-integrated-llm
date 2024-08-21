@@ -1,6 +1,3 @@
-Here's a `README.md` file that explains how to run and test your program based on the steps you've outlined:
-
----
 
 # PDF Data Extraction and Image Matching
 
