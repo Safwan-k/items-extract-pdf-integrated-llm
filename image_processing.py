@@ -77,6 +77,9 @@ def extract_text_from_pdf(pdf_path):
         page = document.load_page(page_num)
         # Extract text with its font information
         text_bbox = page.get_bboxlog()
+
+        text_bbox = [entry for entry in text_bbox if entry[0] in ['fill-image', 'fill-text', 'stroke-path']]
+
         result = []
         current_group = []
         has_image = False
