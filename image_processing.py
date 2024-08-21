@@ -64,25 +64,6 @@ def uploading_image(image_filename, image_bytes):
         print(f"Failed to upload {image_filename}: {e}")
 
 
-def image_position(page_no, x1, y1, image_results):
-    specific_image = get_image_at_position(image_results, page_no, x1, y1)
-    if specific_image:
-        print(f"Image found: {specific_image['filename']}")
-        return True
-    else:
-        print("No image found at the specified position.")
-        return False
-
-
-def get_image_at_position(image_info, target_page, target_x, target_y):
-    for img in image_info:
-        if img["page"] == target_page:
-            pos = img["position"]
-            if pos["x0"] <= target_x <= pos["x1"] and pos["y0"] <= target_y <= pos["y1"]:
-                return img
-    return None
-
-
 def round_tuple_values(t, decimal_places=2):
     return tuple(round(v, decimal_places) for v in t)
 
