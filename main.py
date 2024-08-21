@@ -2,6 +2,7 @@ import csv
 import difflib
 import io
 import os
+import sys
 
 import pymupdf4llm
 import pathlib
@@ -144,15 +145,19 @@ def main():
     __image_dict_result = bbox_to_image_dict(image_bbox_list)
     __updated_image_result = match_image_with_trained_result(__trained_processed_image_data, __trained_result)
     __updated_trained_result_with_image = update_items_with_images(__updated_image_result, __image_dict_result)
-    make_csv(__updated_trained_result_with_image, __csv_path, __output_dir)
+    make_csv(__updated_trained_result_with_image, __csv_name, __csv_path)
 
     print(__updated_trained_result_with_image)
 
 
 if __name__ == "__main__":
-    __pdf_path = "CDV.pdf"
-    __output_dir = '/Users/safwanoffice/PycharmProjects/items-pdf-integrated-llm/outputs'
-    __merchant_name = 'CDV'
-    __csv_path = __merchant_name + '.csv'
+    # __pdf_path = "CDV.pdf"
+    # __output_dir = '/Users/safwanoffice/PycharmProjects/items-pdf-integrated-llm/outputs'
+    # __merchant_name = 'CDV'
+    # __csv_path = __merchant_name + '.csv'
+    __pdf_path = sys.argv[1]
+    __csv_name = sys.argv[2]
+    __csv_path = sys.argv[3]
+    __merchant_name = sys.argv[4]
     image_bbox_list = []
     main()
